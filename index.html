@@ -539,21 +539,25 @@
   }
 
   function stopRecording(){
-    if(mediaRecorder && mediaRecorder.state !== 'recording') return; // already stopped/stopping
+    const btn = document.getElementById('lensBtn');
+    if(btn.disabled) return;
+    btn.disabled = true;
+
     clearInterval(timerInterval);
     document.getElementById('lensBtn').classList.remove('recording');
     document.getElementById('lensRing').classList.remove('pulse');
-    document.getElementById('recStatus').textContent = 'Saving your message...';
+    document.getElementById('recStatus').textContent = 'Saving... (state: ' + (mediaRecorder ? mediaRecorder.state : 'null') + ')';
 
     if(mediaRecorder && mediaRecorder.state === 'recording'){
       mediaRecorder.requestData();
       mediaRecorder.stop();
     } else {
-      handleRecordingStop();
+      setTimeout(handleRecordingStop, 1500); // delay so debug text is visible
     }
   }
 
   function handleRecordingStop(){
+    document.getElementById('lensBtn').disabled = false;
     // In production: upload/save recordedChunks (Blob) here.
     // const blob = new Blob(recordedChunks, { type: 'video/webm' });
 
