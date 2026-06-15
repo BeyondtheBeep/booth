@@ -26,6 +26,18 @@
     font-family:'Inter', sans-serif;
     color: var(--cream);
     user-select:none;
+    position:relative;
+  }
+
+  body::after{
+    content:'';
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    opacity:0.04;
+    mix-blend-mode:overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    z-index:1000;
   }
 
   .screen{
@@ -45,45 +57,127 @@
   #welcome{
     text-align:center;
     padding: 0 8%;
+    position:relative;
+    overflow:hidden;
+  }
+  .welcome-frame{
+    position:absolute;
+    inset: 14px;
+    border: 1px solid rgba(184,147,90,0.28);
+    border-radius: 4px;
+    pointer-events:none;
+    z-index:2;
+  }
+  .welcome-frame::before{
+    content:'';
+    position:absolute;
+    inset: 8px;
+    border: 1px solid rgba(184,147,90,0.12);
+    border-radius: 2px;
+  }
+  .welcome-glow{
+    position:absolute;
+    top:50%;
+    left:50%;
+    width: clamp(320px, 90vw, 600px);
+    height: clamp(320px, 90vw, 600px);
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, var(--glow) 0%, rgba(216,184,130,0.08) 45%, transparent 70%);
+    border-radius:50%;
+    animation: glowBreathe 6s ease-in-out infinite;
+    pointer-events:none;
+    z-index:0;
+  }
+  @keyframes glowBreathe{
+    0%, 100% { opacity:0.6; transform: translate(-50%, -50%) scale(1); }
+    50% { opacity:1; transform: translate(-50%, -50%) scale(1.08); }
+  }
+  .welcome-content{
+    position:relative;
+    z-index:1;
+  }
+  .welcome-eyebrow{
+    font-family:'Inter', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--brass-light);
+    opacity:0.6;
+    margin-bottom: 1rem;
   }
   .brand-mark{
     font-family:'Cormorant Garamond', serif;
-    font-weight:600;
-    font-size: clamp(2.2rem, 8vw, 3.6rem);
-    letter-spacing: 0.04em;
+    font-weight:500;
+    font-size: clamp(2.6rem, 9.5vw, 4.2rem);
+    letter-spacing: 0.06em;
     color: var(--brass-light);
+    text-shadow: 0 0 50px var(--glow);
   }
   .brand-sub{
     font-family:'Cormorant Garamond', serif;
     font-style: italic;
-    font-size: clamp(1rem, 3.2vw, 1.4rem);
+    font-weight:400;
+    font-size: clamp(1rem, 3.2vw, 1.35rem);
     color: var(--cream);
     opacity:0.75;
-    margin-top: 0.3rem;
-    letter-spacing: 0.08em;
+    margin-top: 0.5rem;
+    letter-spacing: 0.16em;
   }
-  .divider{
-    width: 60px;
+  .ornament{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap: 0.7rem;
+    margin: 2.2rem auto;
+    opacity:0.7;
+  }
+  .ornament-line{
+    width: 36px;
     height: 1px;
-    background: var(--brass);
-    margin: 1.8rem auto;
-    opacity:0.6;
+    background: linear-gradient(to right, transparent, var(--brass));
+  }
+  .ornament-line.left{ background: linear-gradient(to left, transparent, var(--brass)); }
+  .ornament-line.right{ background: linear-gradient(to right, transparent, var(--brass)); }
+  .ornament-dot{
+    width: 6px;
+    height: 6px;
+    border-radius:50%;
+    border: 1.5px solid var(--brass);
+    background: transparent;
+  }
+  .welcome-tagline{
+    font-family:'Cormorant Garamond', serif;
+    font-style:italic;
+    font-weight:400;
+    opacity:0.65;
+    font-size:1.08rem;
+    max-width:80%;
+    margin:0 auto;
+    line-height:1.7;
+    color: var(--cream);
   }
   .start-btn{
-    margin-top: 2.5rem;
-    background: linear-gradient(135deg, var(--brass-light), var(--brass));
-    color: var(--charcoal);
-    border:none;
+    margin-top: 3rem;
+    background: transparent;
+    color: var(--brass-light);
+    border: 1px solid var(--brass);
     font-family:'Inter', sans-serif;
-    font-weight:600;
-    font-size: 1.1rem;
-    letter-spacing: 0.06em;
-    padding: 1.1rem 3rem;
-    border-radius: 999px;
-    box-shadow: 0 8px 30px var(--glow);
+    font-weight:500;
+    font-size: 0.95rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    padding: 1.1rem 3.2rem;
+    border-radius: 2px;
+    box-shadow: 0 0 0 0 transparent;
     cursor:pointer;
+    transition: all .25s ease;
   }
-  .start-btn:active{ transform: scale(0.97); }
+  .start-btn:active{
+    background: var(--brass);
+    color: var(--charcoal);
+    box-shadow: 0 8px 30px var(--glow);
+    transform: scale(0.98);
+  }
 
   /* ---------- PROMPT SELECT ---------- */
   #prompts{
@@ -338,13 +432,22 @@
 
 <!-- WELCOME -->
 <div class="screen" id="welcome">
-  <div class="brand-mark" id="brandMark" onclick="brandTap()">Beyond the Beep</div>
-  <div class="brand-sub">hold on to every word</div>
-  <div class="divider"></div>
-  <p style="font-family:'Cormorant Garamond', serif; font-style:italic; opacity:0.7; font-size:1.05rem; max-width:80%; margin:0 auto; line-height:1.6;">
-    Leave a video message for the happy couple
-  </p>
-  <button class="start-btn" onclick="showScreen('prompts')">Begin</button>
+  <div class="welcome-frame"></div>
+  <div class="welcome-glow"></div>
+  <div class="welcome-content">
+    <div class="welcome-eyebrow">Video Guestbook</div>
+    <div class="brand-mark" id="brandMark" onclick="brandTap()">Beyond the Beep</div>
+    <div class="brand-sub">hold on to every word</div>
+    <div class="ornament">
+      <div class="ornament-line left"></div>
+      <div class="ornament-dot"></div>
+      <div class="ornament-line right"></div>
+    </div>
+    <p class="welcome-tagline">
+      Leave a video message for the happy couple
+    </p>
+    <button class="start-btn" onclick="showScreen('prompts')">Begin</button>
+  </div>
 </div>
 
 <!-- PROMPT SELECTION -->
@@ -368,16 +471,16 @@
       <div class="rec-prompt" id="recPromptText"></div>
     </div>
 
-    <div id="countdownWrap" class="hidden">
-      <div class="countdown" id="countdownNum">3</div>
-    </div>
-
     <div id="recordWrap" class="hidden" style="width:100%; height:100%; position:relative;">
       <video id="preview" autoplay playsinline muted style="width:100%; height:100%; object-fit: cover; border-radius: 18px; background:#000; pointer-events: none;"></video>
 
-      <div class="timer" id="timer" style="position:absolute; top:14px; right:16px; background:rgba(28,26,24,0.55); padding:0.2rem 0.8rem; border-radius:999px; z-index:5;">0:00</div>
+      <div id="countdownOverlay" class="hidden" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(20,18,15,0.35); border-radius:18px; z-index:8;">
+        <div class="countdown" id="countdownNum">3</div>
+      </div>
 
-      <button id="stopBtn" onclick="stopRecording()" ontouchend="stopRecording()" style="position:absolute; bottom:18px; left:50%; transform:translateX(-50%); z-index:10; background: var(--record-red); color:#fff; border:none; font-family:'Inter',sans-serif; font-weight:600; font-size:1.1rem; letter-spacing:0.1em; padding:1rem 3rem; border-radius:999px; box-shadow:0 6px 24px rgba(193,69,58,0.5);">STOP</button>
+      <div class="timer hidden" id="timer" style="position:absolute; top:14px; right:16px; background:rgba(28,26,24,0.55); padding:0.2rem 0.8rem; border-radius:999px; z-index:5;">0:00</div>
+
+      <button id="stopBtn" class="hidden" onclick="stopRecording()" ontouchend="stopRecording()" style="position:absolute; bottom:18px; left:50%; transform:translateX(-50%); z-index:10; background: var(--record-red); color:#fff; border:none; font-family:'Inter',sans-serif; font-weight:600; font-size:1.1rem; letter-spacing:0.1em; padding:1rem 3rem; border-radius:999px; box-shadow:0 6px 24px rgba(193,69,58,0.5);">STOP</button>
     </div>
   </div>
 
@@ -582,8 +685,10 @@
   async function startCountdown(){
     document.getElementById('recStatus').textContent = 'Requesting camera...';
     document.getElementById('recordWrap').classList.add('hidden');
-    document.getElementById('countdownWrap').classList.add('hidden');
+    document.getElementById('countdownOverlay').classList.add('hidden');
     document.getElementById('cancelBtn').classList.add('hidden');
+    document.getElementById('timer').classList.add('hidden');
+    document.getElementById('stopBtn').classList.add('hidden');
 
     // Check basic support first
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -605,8 +710,10 @@
       return;
     }
 
+    // Show the camera preview right away, with countdown overlaid on top
+    document.getElementById('recordWrap').classList.remove('hidden');
     document.getElementById('recStatus').textContent = 'Get ready';
-    document.getElementById('countdownWrap').classList.remove('hidden');
+    document.getElementById('countdownOverlay').classList.remove('hidden');
 
     let count = 3;
     const numEl = document.getElementById('countdownNum');
@@ -617,9 +724,10 @@
         numEl.textContent = count;
       } else {
         clearInterval(interval);
-        document.getElementById('countdownWrap').classList.add('hidden');
-        document.getElementById('recordWrap').classList.remove('hidden');
+        document.getElementById('countdownOverlay').classList.add('hidden');
         document.getElementById('cancelBtn').classList.remove('hidden');
+        document.getElementById('timer').classList.remove('hidden');
+        document.getElementById('stopBtn').classList.remove('hidden');
         startRecording();
       }
     }, 800);
