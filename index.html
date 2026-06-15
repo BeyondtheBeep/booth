@@ -636,7 +636,7 @@
       mediaRecorder.onerror = e => {
         document.getElementById('recStatus').textContent = 'Recorder error: ' + (e.error ? e.error.name : 'unknown');
       };
-      mediaRecorder.start();
+      mediaRecorder.start(500); // collect data every 500ms
       document.getElementById('recStatus').textContent = 'Recording (' + (mimeType || 'default') + ') — tap to finish';
     } catch(err) {
       document.getElementById('recStatus').textContent = 'MediaRecorder error: ' + err.name + ' - ' + err.message;
@@ -681,10 +681,14 @@
     if(recordedChunks.length > 0){
       const mimeType = mediaRecorder && mediaRecorder.mimeType ? mediaRecorder.mimeType : 'video/webm';
       const blob = new Blob(recordedChunks, { type: mimeType });
-      saveVideo(blob, selectedPrompt).catch(err => {
-        console.error('Save error:', err);
-        alert('Error saving video: ' + err.message);
+      saveVideo(blob, selectedPrompt).then((id) => {
+        console.log('Saved video id', id, 'size', blob.size, 'type', mimeType);
+        document.getElementById('recStatus').textContent = 'Saved! (id ' + id + ', ' + Math.round(blob.size/1024) + 'KB, ' + recordedChunks.length + ' chunks)';
+      }).catch(err => {
+        document.getElementById('recStatus').textContent = 'SAVE ERROR: ' + err.message;
       });
+    } else {
+      document.getElementById('recStatus').textContent = 'WARNING: 0 chunks recorded';
     }
 
     // Stop camera/mic now that recording is done
@@ -692,7 +696,7 @@
       stream.getTracks().forEach(track => track.stop());
       stream = null;
     }
-    showScreen('review');
+    setTimeout(() => showScreen('review'), 2000);
   }
 
   function resetToPrompts(){
