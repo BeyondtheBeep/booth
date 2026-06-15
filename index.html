@@ -437,13 +437,13 @@
   <div class="welcome-content">
     <div class="welcome-eyebrow">Video Guestbook</div>
     <div class="brand-mark" id="brandMark" onclick="brandTap()">Beyond the Beep</div>
-    <div class="brand-sub">hold on to every word</div>
+    <div class="brand-sub" id="brandSub">hold on to every word</div>
     <div class="ornament">
       <div class="ornament-line left"></div>
       <div class="ornament-dot"></div>
       <div class="ornament-line right"></div>
     </div>
-    <p class="welcome-tagline">
+    <p class="welcome-tagline" id="welcomeTagline">
       Leave a video message for the happy couple
     </p>
     <button class="start-btn" onclick="showScreen('prompts')">Begin</button>
@@ -502,15 +502,30 @@
 
 <!-- ADMIN / EXPORT -->
 <div class="screen hidden" id="admin" style="text-align:left; align-items:stretch; padding:5vh 6%; overflow-y:auto;">
-  <h1 style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:1.8rem; color:var(--brass-light); text-align:center;">Saved Messages</h1>
-  <p id="adminCount" style="font-family:'Cormorant Garamond', serif; font-style:italic; opacity:0.65; text-align:center; margin-top:0.4rem; margin-bottom:1.5rem;">Loading...</p>
+  <h1 style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:1.8rem; color:var(--brass-light); text-align:center;">Event Settings</h1>
 
-  <div style="display:flex; flex-direction:column; gap:0.8rem; margin-bottom:2rem;">
-    <button class="primary-btn" onclick="exportAllVideos()">Download all as ZIP</button>
-    <button class="ghost-btn" onclick="clearAllVideos()">Clear all saved videos</button>
+  <div style="margin: 1.5rem 0 2rem;">
+    <label for="eventTitleInput" style="display:block; font-size:0.8rem; letter-spacing:0.1em; text-transform:uppercase; opacity:0.6; margin-bottom:0.5rem;">Welcome screen title</label>
+    <input id="eventTitleInput" type="text" placeholder="Beyond the Beep" style="width:100%; background:var(--charcoal-soft); border:1px solid rgba(184,147,90,0.3); border-radius:10px; padding:0.9rem 1rem; color:var(--cream); font-family:'Cormorant Garamond', serif; font-size:1.2rem;">
+
+    <label for="eventSubInput" style="display:block; font-size:0.8rem; letter-spacing:0.1em; text-transform:uppercase; opacity:0.6; margin:1rem 0 0.5rem;">Subtitle / message</label>
+    <input id="eventSubInput" type="text" placeholder="Leave a video message for the happy couple" style="width:100%; background:var(--charcoal-soft); border:1px solid rgba(184,147,90,0.3); border-radius:10px; padding:0.9rem 1rem; color:var(--cream); font-family:'Cormorant Garamond', serif; font-style:italic; font-size:1.05rem;">
+
+    <button class="primary-btn" id="saveSettingsBtn" style="margin-top:1rem; width:100%;" onclick="saveEventSettings()">Save</button>
+    <button class="ghost-btn" style="margin-top:0.6rem; width:100%;" onclick="resetEventSettings()">Reset to default</button>
   </div>
 
-  <div id="videoList" style="display:flex; flex-direction:column; gap:0.8rem;"></div>
+  <div style="border-top:1px solid rgba(184,147,90,0.2); padding-top:1.5rem;">
+    <h1 style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:1.6rem; color:var(--brass-light); text-align:center;">Saved Messages</h1>
+    <p id="adminCount" style="font-family:'Cormorant Garamond', serif; font-style:italic; opacity:0.65; text-align:center; margin-top:0.4rem; margin-bottom:1.5rem;">Loading...</p>
+
+    <div style="display:flex; flex-direction:column; gap:0.8rem; margin-bottom:2rem;">
+      <button class="primary-btn" id="exportZipBtn" onclick="exportAllVideos()">Download all as ZIP</button>
+      <button class="ghost-btn" onclick="clearAllVideos()">Clear all saved videos</button>
+    </div>
+
+    <div id="videoList" style="display:flex; flex-direction:column; gap:0.8rem;"></div>
+  </div>
 
   <button class="secondary-btn" style="margin-top:2rem; align-self:center;" onclick="resetToWelcome()">Back to booth</button>
 </div>
@@ -592,7 +607,7 @@
     const videos = await getAllVideos();
     if(videos.length === 0){ alert('No videos to export.'); return; }
 
-    const btn = document.querySelector('#admin .primary-btn');
+    const btn = document.getElementById('exportZipBtn');
     const originalText = btn.textContent;
     btn.disabled = true;
     btn.textContent = 'Preparing ZIP...';
@@ -654,7 +669,49 @@
       brandTapCount = 0;
       showScreen('admin');
       loadAdminScreen();
+      loadEventSettingsForm();
     }
+  }
+
+  // ---------- Event settings (per-event branding) ----------
+  const DEFAULT_TITLE = 'Beyond the Beep';
+  const DEFAULT_SUB = 'Leave a video message for the happy couple';
+
+  function applyEventSettings(){
+    const title = localStorage.getItem('eventTitle') || DEFAULT_TITLE;
+    const sub = localStorage.getItem('eventSub') || DEFAULT_SUB;
+    document.getElementById('brandMark').textContent = title;
+    document.getElementById('welcomeTagline').textContent = sub;
+  }
+
+  function loadEventSettingsForm(){
+    document.getElementById('eventTitleInput').value = localStorage.getItem('eventTitle') || '';
+    document.getElementById('eventSubInput').value = localStorage.getItem('eventSub') || '';
+  }
+
+  function saveEventSettings(){
+    const title = document.getElementById('eventTitleInput').value.trim();
+    const sub = document.getElementById('eventSubInput').value.trim();
+
+    if(title) localStorage.setItem('eventTitle', title);
+    else localStorage.removeItem('eventTitle');
+
+    if(sub) localStorage.setItem('eventSub', sub);
+    else localStorage.removeItem('eventSub');
+
+    applyEventSettings();
+
+    const btn = document.getElementById('saveSettingsBtn');
+    const original = btn.textContent;
+    btn.textContent = 'Saved!';
+    setTimeout(() => { btn.textContent = original; }, 1200);
+  }
+
+  function resetEventSettings(){
+    localStorage.removeItem('eventTitle');
+    localStorage.removeItem('eventSub');
+    loadEventSettingsForm();
+    applyEventSettings();
   }
 
   function buildPrompts(){
@@ -669,6 +726,7 @@
     });
   }
   buildPrompts();
+  applyEventSettings();
 
   function showScreen(id){
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
