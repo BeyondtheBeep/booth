@@ -337,7 +337,7 @@
 
 <!-- WELCOME -->
 <div class="screen" id="welcome">
-  <div class="brand-mark">Beyond the Beep</div>
+  <div class="brand-mark" id="brandMark" onclick="brandTap()">Beyond the Beep</div>
   <div class="brand-sub">hold on to every word</div>
   <div class="divider"></div>
   <p style="font-family:'Cormorant Garamond', serif; font-style:italic; opacity:0.7; font-size:1.05rem; max-width:80%; margin:0 auto; line-height:1.6;">
@@ -396,6 +396,21 @@
   </div>
 </div>
 
+<!-- ADMIN / EXPORT -->
+<div class="screen hidden" id="admin" style="text-align:left; align-items:stretch; padding:5vh 6%; overflow-y:auto;">
+  <h1 style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:1.8rem; color:var(--brass-light); text-align:center;">Saved Messages</h1>
+  <p id="adminCount" style="font-family:'Cormorant Garamond', serif; font-style:italic; opacity:0.65; text-align:center; margin-top:0.4rem; margin-bottom:1.5rem;">Loading...</p>
+
+  <div style="display:flex; flex-direction:column; gap:0.8rem; margin-bottom:2rem;">
+    <button class="primary-btn" onclick="exportAllVideos()">Download all videos</button>
+    <button class="ghost-btn" onclick="clearAllVideos()">Clear all saved videos</button>
+  </div>
+
+  <div id="videoList" style="display:flex; flex-direction:column; gap:0.8rem;"></div>
+
+  <button class="secondary-btn" style="margin-top:2rem; align-self:center;" onclick="resetToWelcome()">Back to booth</button>
+</div>
+
 <script>
   const PROMPTS = [
     { label: "Share your favorite memory together", hint: "30–60 seconds" },
@@ -411,6 +426,115 @@
   let timerInterval = null;
   let seconds = 0;
   let maxSeconds = 90; // safety cap
+  let brandTapCount = 0;
+  let brandTapTimer = null;
+
+  // ---------- IndexedDB storage ----------
+  const DB_NAME = 'beepBoothDB';
+  const STORE_NAME = 'videos';
+  let dbInstance = null;
+
+  function openDB(){
+    return new Promise((resolve, reject) => {
+      if(dbInstance){ resolve(dbInstance); return; }
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if(!db.objectStoreNames.contains(STORE_NAME)){
+          db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+        }
+      };
+      req.onsuccess = (e) => { dbInstance = e.target.result; resolve(dbInstance); };
+      req.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  async function saveVideo(blob, prompt){
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      const record = { blob, prompt, timestamp: new Date().toISOString() };
+      const req = store.add(record);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  async function getAllVideos(){
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  async function clearAllVideos(){
+    if(!confirm('Delete all saved videos? This cannot be undone.')) return;
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.clear();
+      req.onsuccess = () => { resolve(); loadAdminScreen(); };
+      req.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  async function exportAllVideos(){
+    const videos = await getAllVideos();
+    if(videos.length === 0){ alert('No videos to export.'); return; }
+
+    for(const v of videos){
+      const ext = v.blob.type.includes('mp4') ? 'mp4' : 'webm';
+      const filename = `message-${v.id}-${v.timestamp.replace(/[:.]/g,'-')}.${ext}`;
+      const url = URL.createObjectURL(v.blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      // Small delay between downloads to help iOS handle multiple saves
+      await new Promise(r => setTimeout(r, 400));
+    }
+  }
+
+  async function loadAdminScreen(){
+    const videos = await getAllVideos();
+    document.getElementById('adminCount').textContent =
+      videos.length === 0 ? 'No messages saved yet' :
+      videos.length + (videos.length === 1 ? ' message saved' : ' messages saved');
+
+    const list = document.getElementById('videoList');
+    list.innerHTML = '';
+    videos.slice().reverse().forEach(v => {
+      const item = document.createElement('div');
+      item.style.cssText = 'background:var(--charcoal-soft); border:1px solid rgba(184,147,90,0.25); border-radius:12px; padding:0.9rem 1.1rem;';
+      const date = new Date(v.timestamp);
+      const sizeKB = Math.round(v.blob.size / 1024);
+      item.innerHTML = `
+        <div style="font-family:'Cormorant Garamond', serif; font-size:1.05rem; color:var(--cream);">${v.prompt || 'Untitled message'}</div>
+        <div style="font-size:0.75rem; opacity:0.5; margin-top:0.3rem;">${date.toLocaleString()} · ${sizeKB} KB</div>
+      `;
+      list.appendChild(item);
+    });
+  }
+
+  function brandTap(){
+    brandTapCount++;
+    clearTimeout(brandTapTimer);
+    brandTapTimer = setTimeout(() => { brandTapCount = 0; }, 2000);
+    if(brandTapCount >= 5){
+      brandTapCount = 0;
+      showScreen('admin');
+      loadAdminScreen();
+    }
+  }
 
   function buildPrompts(){
     const list = document.getElementById('promptList');
@@ -552,8 +676,16 @@
     const btn = document.getElementById('stopBtn');
     btn.disabled = false;
     btn.textContent = 'STOP';
-    // In production: upload/save recordedChunks (Blob) here.
-    // const blob = new Blob(recordedChunks, { type: 'video/webm' });
+
+    // Save the recorded video to local storage
+    if(recordedChunks.length > 0){
+      const mimeType = mediaRecorder && mediaRecorder.mimeType ? mediaRecorder.mimeType : 'video/webm';
+      const blob = new Blob(recordedChunks, { type: mimeType });
+      saveVideo(blob, selectedPrompt).catch(err => {
+        console.error('Save error:', err);
+        alert('Error saving video: ' + err.message);
+      });
+    }
 
     // Stop camera/mic now that recording is done
     if(stream){
