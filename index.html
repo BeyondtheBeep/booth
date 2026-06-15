@@ -376,12 +376,7 @@
 
       <div class="timer" id="timer" style="position:absolute; top:14px; right:16px; background:rgba(28,26,24,0.55); padding:0.2rem 0.8rem; border-radius:999px; z-index:5;">0:00</div>
 
-      <div class="lens-wrap" style="position:absolute; bottom:18px; left:50%; transform:translateX(-50%); width:clamp(72px, 18vw, 96px); height:clamp(72px, 18vw, 96px); z-index:5;">
-        <div class="lens-ring" id="lensRing"></div>
-        <button class="lens-btn" id="lensBtn" onclick="stopRecording()" ontouchend="stopRecording()">
-          <div class="lens-icon" id="lensIcon"></div>
-        </button>
-      </div>
+      <button id="stopBtn" onclick="stopRecording()" ontouchend="stopRecording()" style="position:absolute; bottom:18px; left:50%; transform:translateX(-50%); z-index:10; background: var(--record-red); color:#fff; border:none; font-family:'Inter',sans-serif; font-weight:600; font-size:1.1rem; letter-spacing:0.1em; padding:1rem 3rem; border-radius:999px; box-shadow:0 6px 24px rgba(193,69,58,0.5);">STOP</button>
     </div>
   </div>
 
@@ -502,8 +497,6 @@
   }
 
   function startRecording(){
-    document.getElementById('lensBtn').classList.add('recording');
-    document.getElementById('lensRing').classList.add('pulse');
     seconds = 0;
     updateTimer();
 
@@ -539,13 +532,12 @@
   }
 
   function stopRecording(){
-    const btn = document.getElementById('lensBtn');
+    const btn = document.getElementById('stopBtn');
     if(btn.disabled) return;
     btn.disabled = true;
+    btn.textContent = 'SAVING...';
 
     clearInterval(timerInterval);
-    document.getElementById('lensBtn').classList.remove('recording');
-    document.getElementById('lensRing').classList.remove('pulse');
     document.getElementById('recStatus').textContent = 'Saving... (state: ' + (mediaRecorder ? mediaRecorder.state : 'null') + ')';
 
     if(mediaRecorder && mediaRecorder.state === 'recording'){
@@ -557,7 +549,9 @@
   }
 
   function handleRecordingStop(){
-    document.getElementById('lensBtn').disabled = false;
+    const btn = document.getElementById('stopBtn');
+    btn.disabled = false;
+    btn.textContent = 'STOP';
     // In production: upload/save recordedChunks (Blob) here.
     // const blob = new Blob(recordedChunks, { type: 'video/webm' });
 
