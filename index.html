@@ -369,7 +369,8 @@
     <div class="countdown" id="countdownNum">3</div>
   </div>
 
-  <div id="recordWrap" class="hidden" style="display:flex; flex-direction:column; align-items:center; gap:1.5rem;">
+  <div id="recordWrap" class="hidden" style="display:flex; flex-direction:column; align-items:center; gap:1.5rem; width:100%;">
+    <video id="preview" autoplay playsinline muted style="width: min(70vw, 320px); aspect-ratio: 3/4; object-fit: cover; border-radius: 16px; border: 1px solid rgba(184,147,90,0.3); background:#000;"></video>
     <div class="lens-wrap">
       <div class="lens-ring" id="lensRing"></div>
       <button class="lens-btn" id="lensBtn" onclick="stopRecording()">
@@ -436,11 +437,28 @@
     startCountdown();
   }
 
-  function startCountdown(){
-    document.getElementById('recStatus').textContent = 'Get ready';
+  async function startCountdown(){
+    document.getElementById('recStatus').textContent = 'Requesting camera...';
     document.getElementById('recordWrap').classList.add('hidden');
-    document.getElementById('countdownWrap').classList.remove('hidden');
+    document.getElementById('countdownWrap').classList.add('hidden');
     document.getElementById('cancelBtn').classList.add('hidden');
+
+    // Request camera/mic access up front
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' },
+        audio: true
+      });
+      const preview = document.getElementById('preview');
+      preview.srcObject = stream;
+    } catch(err) {
+      console.error('Camera/mic access error:', err);
+      document.getElementById('recStatus').textContent = 'Camera access needed — check Safari settings';
+      return;
+    }
+
+    document.getElementById('recStatus').textContent = 'Get ready';
+    document.getElementById('countdownWrap').classList.remove('hidden');
 
     let count = 3;
     const numEl = document.getElementById('countdownNum');
@@ -459,7 +477,20 @@
     }, 800);
   }
 
-  async function startRecording(){
+  function getSupportedMimeType(){
+    const types = [
+      'video/mp4',
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm'
+    ];
+    for(const type of types){
+      if(MediaRecorder.isTypeSupported(type)) return type;
+    }
+    return ''; // let browser pick default
+  }
+
+  function startRecording(){
     document.getElementById('recStatus').textContent = 'Recording — tap to finish';
     document.getElementById('lensBtn').classList.add('recording');
     document.getElementById('lensRing').classList.add('pulse');
@@ -467,15 +498,18 @@
     updateTimer();
 
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       recordedChunks = [];
-      mediaRecorder = new MediaRecorder(stream);
+      const mimeType = getSupportedMimeType();
+      mediaRecorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+
       mediaRecorder.ondataavailable = e => { if(e.data.size > 0) recordedChunks.push(e.data); };
       mediaRecorder.onstop = handleRecordingStop;
       mediaRecorder.start();
     } catch(err) {
-      console.error('Camera/mic access error:', err);
-      document.getElementById('recStatus').textContent = 'Camera access needed — check settings';
+      console.error('MediaRecorder error:', err);
+      document.getElementById('recStatus').textContent = 'Recording not supported on this browser';
     }
 
     timerInterval = setInterval(() => {
@@ -497,33 +531,37 @@
     document.getElementById('lensRing').classList.remove('pulse');
     document.getElementById('recStatus').textContent = 'Saving your message...';
 
-    if(mediaRecorder && mediaRecorder.state !== 'inactive'){
+    if(mediaRecorder && mediaRecorder.state === 'recording'){
+      mediaRecorder.requestData();
       mediaRecorder.stop();
     } else {
       handleRecordingStop();
-    }
-    if(stream){
-      stream.getTracks().forEach(track => track.stop());
     }
   }
 
   function handleRecordingStop(){
     // In production: upload/save recordedChunks (Blob) here.
     // const blob = new Blob(recordedChunks, { type: 'video/webm' });
+
+    // Stop camera/mic now that recording is done
+    if(stream){
+      stream.getTracks().forEach(track => track.stop());
+      stream = null;
+    }
     showScreen('review');
   }
 
   function resetToPrompts(){
-    if(mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-    if(stream) stream.getTracks().forEach(t => t.stop());
+    if(mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+    if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
     clearInterval(timerInterval);
     selectedPrompt = "";
     showScreen('prompts');
   }
 
   function resetToWelcome(){
-    if(mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-    if(stream) stream.getTracks().forEach(t => t.stop());
+    if(mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+    if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
     clearInterval(timerInterval);
     showScreen('welcome');
   }
