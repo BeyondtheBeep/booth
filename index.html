@@ -333,6 +333,7 @@
   }
 </style>
 </head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <body>
 
 <!-- WELCOME -->
@@ -402,7 +403,7 @@
   <p id="adminCount" style="font-family:'Cormorant Garamond', serif; font-style:italic; opacity:0.65; text-align:center; margin-top:0.4rem; margin-bottom:1.5rem;">Loading...</p>
 
   <div style="display:flex; flex-direction:column; gap:0.8rem; margin-bottom:2rem;">
-    <button class="primary-btn" onclick="exportAllVideos()">Download all videos</button>
+    <button class="primary-btn" onclick="exportAllVideos()">Download all as ZIP</button>
     <button class="ghost-btn" onclick="clearAllVideos()">Clear all saved videos</button>
   </div>
 
@@ -488,19 +489,36 @@
     const videos = await getAllVideos();
     if(videos.length === 0){ alert('No videos to export.'); return; }
 
-    for(const v of videos){
-      const ext = v.blob.type.includes('mp4') ? 'mp4' : 'webm';
-      const filename = `message-${v.id}-${v.timestamp.replace(/[:.]/g,'-')}.${ext}`;
-      const url = URL.createObjectURL(v.blob);
+    const btn = document.querySelector('#admin .primary-btn');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Preparing ZIP...';
+
+    try {
+      const zip = new JSZip();
+      videos.forEach(v => {
+        const ext = v.blob.type.includes('mp4') ? 'mp4' : 'webm';
+        const filename = `message-${v.id}-${v.timestamp.replace(/[:.]/g,'-')}.${ext}`;
+        zip.file(filename, v.blob);
+      });
+
+      const content = await zip.generateAsync({ type: 'blob' }, (metadata) => {
+        btn.textContent = `Zipping... ${Math.round(metadata.percent)}%`;
+      });
+
+      const url = URL.createObjectURL(content);
       const a = document.createElement('a');
       a.href = url;
-      a.download = filename;
+      a.download = `beyond-the-beep-messages-${new Date().toISOString().replace(/[:.]/g,'-')}.zip`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      // Small delay between downloads to help iOS handle multiple saves
-      await new Promise(r => setTimeout(r, 400));
+    } catch(err) {
+      alert('Error creating ZIP: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
     }
   }
 
