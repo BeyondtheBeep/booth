@@ -443,6 +443,12 @@
     document.getElementById('countdownWrap').classList.add('hidden');
     document.getElementById('cancelBtn').classList.add('hidden');
 
+    // Check basic support first
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      document.getElementById('recStatus').textContent = 'Error: getUserMedia not available (need HTTPS + supported browser)';
+      return;
+    }
+
     // Request camera/mic access up front
     try {
       stream = await navigator.mediaDevices.getUserMedia({
@@ -451,9 +457,9 @@
       });
       const preview = document.getElementById('preview');
       preview.srcObject = stream;
+      preview.onloadedmetadata = () => preview.play().catch(e => console.error('play error', e));
     } catch(err) {
-      console.error('Camera/mic access error:', err);
-      document.getElementById('recStatus').textContent = 'Camera access needed — check Safari settings';
+      document.getElementById('recStatus').textContent = 'Error: ' + err.name + ' - ' + err.message;
       return;
     }
 
@@ -491,7 +497,6 @@
   }
 
   function startRecording(){
-    document.getElementById('recStatus').textContent = 'Recording — tap to finish';
     document.getElementById('lensBtn').classList.add('recording');
     document.getElementById('lensRing').classList.add('pulse');
     seconds = 0;
@@ -506,10 +511,13 @@
 
       mediaRecorder.ondataavailable = e => { if(e.data.size > 0) recordedChunks.push(e.data); };
       mediaRecorder.onstop = handleRecordingStop;
+      mediaRecorder.onerror = e => {
+        document.getElementById('recStatus').textContent = 'Recorder error: ' + (e.error ? e.error.name : 'unknown');
+      };
       mediaRecorder.start();
+      document.getElementById('recStatus').textContent = 'Recording (' + (mimeType || 'default') + ') — tap to finish';
     } catch(err) {
-      console.error('MediaRecorder error:', err);
-      document.getElementById('recStatus').textContent = 'Recording not supported on this browser';
+      document.getElementById('recStatus').textContent = 'MediaRecorder error: ' + err.name + ' - ' + err.message;
     }
 
     timerInterval = setInterval(() => {
